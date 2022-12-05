@@ -40,53 +40,69 @@ def welcome():
     """Available api routes."""
     return (
         f"Available Static API Routes:<br/>"
+         "<br/>"
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
         "<br/>"
         "<br/>"
         f"Available Dynamic API Routes:<br/>"
-        f"/api/v1.0/temp/<start_date><br/>"
-        f"/api/v1.0/temp/<start_date>/<end_date>"     
+        f"Update the api route with the query start date or start and end dates in the format provided.<br/>"
+        f"minimum start date = 2010-01-01, maximum end date = 2017-08-23<br/>"
+        "<br/>"
+        f"/api/v1.0/temp/YYYY-MM-DD <br/>"
+        f"for example: /api/v1.0/temp/2014-02-04<br/>"
+         "<br/>"
+        f"/api/v1.0/temp2/YYYY-MM-DD/YYYY-MM-DD <br/>"
+        f"for example: /api/v1.0/temp2/2014-04-05/2016-12-31" 
     )
 
+#static api route for json of all stations precip data for the last year recorded in the DB
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    """return json with the date as the key and the value as the precipitation for the last year in the DB"""
+    """return jsonified data of precipitation data for the last year in the DB"""
+    #determine the last measurement date
     final_date = session.query(Measure.date,func.strftime('%Y',Measure.date),\
         func.strftime('%m',Measure.date),func.strftime('%d',Measure.date)).\
         order_by(Measure.date.desc()).first()
     
+    #calculate the year ago date for query start
     year_ago_date = dt.date(int(final_date[1]),int(final_date[2]),int(final_date[3])) - dt.timedelta(days = 365)
 
+    #query the data from query start date and return a jsonified result
     precip = session.query(Measure.date, Measure.prcp).\
         filter(Measure.date>=(dt.date(int(final_date[1]),\
         int(final_date[2]),int(final_date[3])) - dt.timedelta(days = 365))).all()
+    
+    session.close()
 
     precip_ls = list(np.ravel(precip))
     return jsonify(precip_ls)
-    
+
+ #static api for a list of all stations   
 @app.route("/api/v1.0/stations")
 def stations():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
     """return jsonified data of all the stations in the DB"""
-    stations = session.query(Station.station).distinct().count()
+    #query db for unique station ids and return a list of the stations
+    stations = session.query(Station.station).distinct().all()
     session.close()
 
     stations_ls = list(np.ravel(stations))
-    return jsonify(stations)
+    return jsonify(stations_ls)
     
+#static api route for the busiest station temp data for the last year recorded in the DB
 @app.route("/api/v1.0/tobs")
 def tobs():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    """return jsonified data of all the stations in the DB"""
+    """return jsonified data of the busiest station temp data for the last year recorded in the DB"""
 
     station_busiest = session.query(Measure.station, func.count(Measure.station)).\
         group_by(Measure.station).order_by(func.count(Measure.station).desc()).first()
@@ -106,54 +122,14 @@ def tobs():
     st_year_data_ls = list(np.ravel(st_year_data))
     return jsonify(st_year_data_ls)
 
-# @app.route("/api/v1.0/temp") #@app.route("/api/v1.0/temp/<query_date>")
-# def temp():  #def temp(start_date):
-#     # Create our session (link) from Python to the DB
-#     session = Session(engine)
-
-#     """return the min,max and average temps calculated from the given start date to the end of the dataset"""
-#     # query the data
-#     query_date = dt.date(2013,8,14)
-
-#     temp_query = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
-#     filter(Measure.date>=query_date).all()
-
-#     session.close()
-
-#     temp_query_ls = list(np.ravel(temp_query))
-
-#     return jsonify(temp_query_ls)
-
-# @app.route("/api/v1.0/temp3/<query_year><query_month><query_day>")
-# def temp3(query_year,query_month,query_day):  #def temp(start_date):
-#     # Create our session (link) from Python to the DB
-#     session = Session(engine)
-
-#     """return the min,max and average temps calculated from the given start date to the end of the dataset"""
-#     # query the data
-#     # static date to test query query_date = dt.date(2013,8,14)
-#     query_date2 = dt.date(int(query_year),int(query_month),int(query_day))
-
-#     temp_query = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
-#     filter(Measure.date>=query_date2).all()
-
-#     session.close()
-
-#     temp_query_ls = list(np.ravel(temp_query))
-
-#     return jsonify(temp_query_ls)
-
-
-@app.route("/api/v1.0/temp4/<query_date>")
-def temp4(query_date):  #def temp(start_date):
+#dynamic api route with query start date
+@app.route("/api/v1.0/temp/<query_date>")
+def temp(query_date):
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
     """return the min,max and average temps calculated from the given start date to the end of the dataset"""
-    # query the data
-    # static date to test query query_date = dt.date(2013,8,14)
-    #query_date2 = dt.date(int(query_year),int(query_month),int(query_day))
-
+    # query and return the data from the given start date to the end of the dataset
     temp_query = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
     filter(Measure.date>=query_date).all()
 
@@ -163,20 +139,13 @@ def temp4(query_date):  #def temp(start_date):
 
     return jsonify(temp_query_ls)
 
-
-
-
-
-
-
+#dynamic api route with query start and end date
 @app.route("/api/v1.0/temp2/<start_date>/<end_date>")
-def temp2(start_date,end_date):  # def temp(start_date,end_date):
+def temp2(start_date,end_date):
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    # query the data
-    # start_date = dt.date(2016,8,14)
-    # end_date = dt.date(2017,8,14)
+    # query and return the data from the given start date to the given end date
 
     temp_query2 = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
         filter(Measure.date >= start_date).filter(Measure.date <=end_date).all()
@@ -187,39 +156,3 @@ def temp2(start_date,end_date):  # def temp(start_date,end_date):
 
     return jsonify(temp_query2_ls)
     
-
-    # if __name__ == "__main__":
-    #     app.run(debug=True)
-
-# @app.route("/api/v1.0/christry")
-# def christry():
-#     # Create our session (link) from Python to the DB
-#     session = Session(engine)
-
-#     """return jsonified data of all the stations in the DB"""
-
-#     station_busiest = session.query(Measure.station, func.count(Measure.station)).\
-#         group_by(Measure.station).order_by(func.count(Measure.station).desc()).first()
-
-#     sbld = session.query(Measure.station,Measure.date,func.strftime('%Y',Measure.date),\
-#         func.strftime('%m',Measure.date),func.strftime('%d',Measure.date)).\
-#         filter(Measure.station == station_busiest[0]).order_by(Measure.date.desc()).first()
-
-#     st_year_ago = dt.date(int(sbld[2]),int(sbld[3]),int(sbld[4])) - dt.timedelta(days = 365)
-
-#     st_year_data = session.query(Measure.station, Measure.date, Measure.tobs).\
-#         filter(Measure.station == sbld[0],\
-#         Measure.date>=(dt.date(int(sbld[2]),int(sbld[3]),int(sbld[4])) - dt.timedelta(days = 365))).all()
-
-#     session.close()
-
-#     # #put data into pd dataframe
-    # st_year_data_df = pd.DataFrame(st_year_data,columns = ['station','date','tobs'])
-    # #describe df
-    # describe_df = st_year_data_df.describe()
-    # return jsonify(describe_df)
-
-
-    # st_year_data_ls = list(np.ravel(st_year_data))
-
-    # return jsonify(st_year_data_ls)
