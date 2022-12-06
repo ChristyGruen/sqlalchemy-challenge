@@ -1,3 +1,7 @@
+#notes to run flask app:  change terminal directory to directory containing app.py, then type python -m flask run 
+# to quit, type clt-C
+# https://code.visualstudio.com/docs/python/tutorial-flask
+
 # Dependencies
 
 import numpy as np
@@ -39,6 +43,8 @@ app = Flask(__name__)
 def welcome():
     """Available api routes."""
     return (
+        f"SQLalchemy Challenge Module 10:  Chris Gruenhagen 6Dec2022<br/>"
+         "<br/>"
         f"Available Static API Routes:<br/>"
          "<br/>"
         f"/api/v1.0/precipitation<br/>"
@@ -50,11 +56,11 @@ def welcome():
         f"Update the api route with the query start date or start and end dates in the format provided.<br/>"
         f"minimum start date = 2010-01-01, maximum end date = 2017-08-23<br/>"
         "<br/>"
-        f"/api/v1.0/temp/YYYY-MM-DD <br/>"
-        f"for example: /api/v1.0/temp/2014-02-04<br/>"
+        f"/api/v1.0/start/YYYY-MM-DD <br/>"
+        f"for example: /api/v1.0/start/2014-02-04<br/>"
          "<br/>"
-        f"/api/v1.0/temp2/YYYY-MM-DD/YYYY-MM-DD <br/>"
-        f"for example: /api/v1.0/temp2/2014-04-05/2016-12-31" 
+        f"/api/v1.0/start_end/YYYY-MM-DD/YYYY-MM-DD <br/>"
+        f"for example: /api/v1.0/start_end/2014-04-05/2016-12-31" 
     )
 
 #static api route for json of all stations precip data for the last year recorded in the DB
@@ -123,36 +129,36 @@ def tobs():
     return jsonify(st_year_data_ls)
 
 #dynamic api route with query start date
-@app.route("/api/v1.0/temp/<query_date>")
-def temp(query_date):
+@app.route("/api/v1.0/start/<query_date>")
+def start(query_date):
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
     """return the min,max and average temps calculated from the given start date to the end of the dataset"""
     # query and return the data from the given start date to the end of the dataset
-    temp_query = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
+    start_query = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
     filter(Measure.date>=query_date).all()
 
     session.close()
 
-    temp_query_ls = list(np.ravel(temp_query))
+    start_query_ls = list(np.ravel(start_query))
 
-    return jsonify(temp_query_ls)
+    return jsonify(start_query_ls)
 
 #dynamic api route with query start and end date
-@app.route("/api/v1.0/temp2/<start_date>/<end_date>")
-def temp2(start_date,end_date):
+@app.route("/api/v1.0/start_end/<start_date>/<end_date>")
+def start_end(start_date,end_date):
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
     # query and return the data from the given start date to the given end date
 
-    temp_query2 = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
+    start_end = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
         filter(Measure.date >= start_date).filter(Measure.date <=end_date).all()
 
     session.close()
 
-    temp_query2_ls = list(np.ravel(temp_query2))
+    start_end_ls = list(np.ravel(start_end))
 
-    return jsonify(temp_query2_ls)
+    return jsonify(start_end_ls)
     
