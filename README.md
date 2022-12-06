@@ -7,7 +7,7 @@ Part 1: Analyze and Explore the Climate Data
 * climate_starter.ipynb
 
 Part 2: Design Your Climate App
-* super secret html file that hasn't yet been created
+* app.py
 
 ### <span style="color:Plum"> ***See below for original homework instructions*** </span>
 ## <span style="color:tan"> Before You Begin
