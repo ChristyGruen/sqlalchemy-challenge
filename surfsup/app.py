@@ -136,14 +136,20 @@ def start(query_date):
 
     """return the min,max and average temps calculated from the given start date to the end of the dataset"""
     # query and return the data from the given start date to the end of the dataset
-    start_query = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
-    filter(Measure.date>=query_date).all()
 
-    session.close()
+    if session.query(Measure.date).filter_by(date = query_date).first() is not None:
 
-    start_query_ls = list(np.ravel(start_query))
+        start_query = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
+        filter(Measure.date>=query_date).all()
 
-    return jsonify(start_query_ls)
+        session.close()
+
+        start_query_ls = list(np.ravel(start_query))
+
+        return jsonify(start_query_ls)
+    else:
+        session.close()
+        return f"query start date not found, please retry"
 
 #dynamic api route with query start and end date
 @app.route("/api/v1.0/start_end/<start_date>/<end_date>")
@@ -152,13 +158,15 @@ def start_end(start_date,end_date):
     session = Session(engine)
 
     # query and return the data from the given start date to the given end date
+    if session.query(Measure.date).filter_by(date = start_date).first() is not None and session.query(Measure.date).filter_by(date = end_date).first() is not None :
+        start_end = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
+            filter(Measure.date >= start_date).filter(Measure.date <=end_date).all()
 
-    start_end = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).\
-        filter(Measure.date >= start_date).filter(Measure.date <=end_date).all()
+        session.close()
 
-    session.close()
+        start_end_ls = list(np.ravel(start_end))
 
-    start_end_ls = list(np.ravel(start_end))
-
-    return jsonify(start_end_ls)
-    
+        return jsonify(start_end_ls)
+    else:
+        session.close()
+        return f"query start and/or end date not found, please retry"
